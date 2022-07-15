@@ -40,12 +40,18 @@ class BillingService(
                     billingResult.isOk() -> {
                         isBillingClientConnected(true, billingResult.responseCode)
                         nonConsumableKeys.queryProductDetails(BillingClient.ProductType.INAPP) {
-                            consumableKeys.queryProductDetails(BillingClient.ProductType.INAPP) {
-                                subscriptionSkuKeys.queryProductDetails(BillingClient.ProductType.SUBS) {
-                                    GlobalScope.launch {
-                                        queryPurchases()
-                                    }
-                                }
+                            GlobalScope.launch {
+                                queryPurchases()
+                            }
+                        }
+                        consumableKeys.queryProductDetails(BillingClient.ProductType.INAPP) {
+                            GlobalScope.launch {
+                                queryPurchases()
+                            }
+                        }
+                        subscriptionSkuKeys.queryProductDetails(BillingClient.ProductType.SUBS) {
+                            GlobalScope.launch {
+                                queryPurchases()
                             }
                         }
                     }
@@ -87,27 +93,27 @@ class BillingService(
     }
 
     override fun subscribe(activity: Activity, sku: String) {
-        if (!sku.isProductReady()) {
-            log("buy. Google billing service is not ready yet. (SKU is not ready yet -2)")
-            return
-        }
-
+        //if (!sku.isProductReady()) {
+        //    log("buy. Google billing service is not ready yet. (SKU is not ready yet -2)")
+        //    return
+        //}
+        (activity as MainActivity).ExitFragment() // close the fragment listing of iap's. but selected purchase will kickoff
         launchBillingFlow(activity, sku, BillingClient.ProductType.SUBS)
     }
 
     private fun launchBillingFlow(activity: Activity, sku: String, type: String) {
         sku.toProductDetails(type) { productDetails ->
             if (productDetails != null) {
-                val productDetailsParamsList =
-                    listOf(
-                        BillingFlowParams.ProductDetailsParams.newBuilder()
-                            .setProductDetails(productDetails)
-                            .build()
-                    )
-                val billingFlowParams = BillingFlowParams.newBuilder()
-                        .setProductDetailsParamsList(productDetailsParamsList).build()
+                val productDetailsParamsList2 = mutableListOf<BillingFlowParams.ProductDetailsParams>()
+                productDetailsParamsList2.add(BillingFlowParams.ProductDetailsParams.newBuilder()
+                    .setProductDetails(productDetails)
+                    .setOfferToken(productDetails.subscriptionOfferDetails!![0].offerToken)
+                    .build()
+                )
+                val billingFlowParams2 = BillingFlowParams.newBuilder()
+                        .setProductDetailsParamsList(productDetailsParamsList2).build()
                 
-                mBillingClient.launchBillingFlow(activity, billingFlowParams)
+                mBillingClient.launchBillingFlow(activity, billingFlowParams2)
             }
         }
     }
@@ -328,12 +334,12 @@ class BillingService(
         }
 
         val productList = mutableListOf<QueryProductDetailsParams.Product>()
-        this.forEach {
+        //this.forEach {
             productList.add(QueryProductDetailsParams.Product.newBuilder()
-                .setProductId(it.toString())
+                .setProductId(this.toString())
                 .setProductType(type)
                 .build())
-        }
+        //}
 
         val params = QueryProductDetailsParams.newBuilder().setProductList(productList)
 
